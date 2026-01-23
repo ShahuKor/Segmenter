@@ -1,0 +1,22 @@
+{
+  "name": "transcode-video-service",
+  "version": "1.0.0",
+  "description": "video transcoding backend service",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "tsc": "tsc"
+  },
+  "author": "Shahu Kor",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.975.0",
+    "aws-lambda": "^1.0.7",
+    "dotenv": "^17.2.3",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.10"
+  }
+}
