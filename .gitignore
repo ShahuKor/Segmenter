@@ -12,11 +12,17 @@ build/
 out/
 coverage/
 
-# Generated JS / typings (keep source only)
-**/*.js
-**/*.d.ts
-**/*.map
+# TypeScript compiled JS
+dist/
+build/
+out/
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts.map
+
+*.d.ts
 *.tsbuildinfo
+
 
 # Allow config JS files
 !*.config.js
