@@ -2,7 +2,6 @@ import {
   S3Client,
   GetObjectCommand,
   PutObjectCommand,
-  decodeURIComponent,
 } from "@aws-sdk/client-s3";
 import fs from "node:fs/promises";
 import ffmpeg from "fluent-ffmpeg";
@@ -15,13 +14,11 @@ const RESOLUTIONS = [
   { name: "1080p", width: 1920, height: 1080 },
 ];
 
-const accessKeyId = process.env.AWS_ACCESS_KEY;
-const secretAccessKey = process.env.AWS_SECRET_KEY;
 const client = new S3Client({
   region: "us-east-1",
   credentials: {
-    accessKeyId: accessKeyId,
-    secretAccessKey: secretAccessKey,
+    accessKeyId: process.env.AWS_ACCESS_KEY,
+    secretAccessKey: process.env.AWS_SECRET_KEY,
   },
 });
 
@@ -38,42 +35,46 @@ async function init() {
     });
 
     const result = await client.send(getCommand);
-    const originalFilePath = "original-file.mp4";
-    await fs.mkdir("videos", { recursive: true });
+
+    const inputPath = path.resolve("input.mp4");
+    const outputDir = path.resolve("output");
+
+    await fs.mkdir(outputDir, { recursive: true });
+
     const body = await streamToBuffer(result.Body);
-    await fs.writeFile(originalFilePath, body);
+    await fs.writeFile(inputPath, body);
 
-    const originalVideoPath = path.resolve(originalFilePath);
-
-    // Start transcoding for each resolution
+    //transcoding process
     await Promise.all(
       RESOLUTIONS.map((res) => {
-        const output = `video-${res.name}.mp4`;
+        const outputPath = path.join(outputDir, `video-${res.name}.mp4`);
+
         return new Promise((resolve, reject) => {
-          ffmpeg(originalVideoPath)
-            .output(output)
+          ffmpeg(inputPath)
+            .output(outputPath)
             .withVideoCodec("libx264")
             .withAudioCodec("aac")
             .withSize(`${res.width}x${res.height}`)
+            .format("mp4")
             .on("end", async () => {
-              // Upload the transcoded video back to S3
+              //upload back to S3 production bucket
               const putCommand = new PutObjectCommand({
                 Bucket: "production.shahukor.xyz",
-                Key: output,
-                Body: await fs.readFile(output),
+                Key: `output/video-${res.name}.mp4`,
+                Body: await fs.readFile(outputPath),
               });
+
               await client.send(putCommand);
-              console.log(`Uploaded ${output}`);
+              console.log(`Uploaded ${res.name}`);
               resolve();
             })
             .on("error", reject)
-            .format("mp4")
             .run();
         });
       }),
     );
 
-    console.log("All videos transcoded and uploaded!");
+    console.log("All videos transcoded and uploaded");
   } catch (error) {
     console.error("Error processing video:", error);
   } finally {
