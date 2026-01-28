@@ -1,6 +1,10 @@
-import { ReceiveMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import {
+  ReceiveMessageCommand,
+  SQSClient,
+  DeleteMessageCommand,
+} from "@aws-sdk/client-sqs";
 import type { S3Event } from "aws-lambda";
-
+import { ECSClient, RunTaskCommand } from "@aws-sdk/client-ecs";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -15,6 +19,14 @@ if (!accessKeyId || !secretAccessKey) {
 }
 
 const client = new SQSClient({
+  region: "us-east-1",
+  credentials: {
+    accessKeyId: accessKeyId,
+    secretAccessKey: secretAccessKey,
+  },
+});
+
+const ecsClient = new ECSClient({
   region: "us-east-1",
   credentials: {
     accessKeyId: accessKeyId,
@@ -48,7 +60,15 @@ async function init() {
 
         //ignores the test event by S3
         if ("Service" in event && "Event" in event) {
-          if (event.Event === "s3:TestEvent") continue;
+          if (event.Event === "s3:TestEvent") {
+            await client.send(
+              new DeleteMessageCommand({
+                QueueUrl: queueURL,
+                ReceiptHandle: message.ReceiptHandle,
+              }),
+            );
+            continue;
+          }
         }
 
         for (const record of event.Records) {
@@ -58,9 +78,45 @@ async function init() {
             object: { key },
           } = s3;
           //spin the docker container
+          const runTaskCommand = new RunTaskCommand({
+            taskDefinition:
+              "arn:aws:ecs:us-east-1:462634386376:task-definition/video-transcoder",
+            cluster:
+              "arn:aws:ecs:us-east-1:462634386376:cluster/decent-gecko-uc569v",
+            launchType: "FARGATE",
+            networkConfiguration: {
+              awsvpcConfiguration: {
+                assignPublicIp: "ENABLED",
+                securityGroups: ["sg-058beb1fc246fc24e"],
+                subnets: [
+                  "subnet-0272148fbbad0d989",
+                  "subnet-0577badfc281e52b2",
+                  "subnet-0166b3054f852b64a",
+                ],
+              },
+            },
+            overrides: {
+              containerOverrides: [
+                {
+                  name: "video-transcoder",
+                  environment: [
+                    { name: "BUCKET_NAME", value: bucket.name },
+                    { name: "KEY", value: key },
+                  ],
+                },
+              ],
+            },
+          });
+          await ecsClient.send(runTaskCommand);
         }
 
-        // delete the message from the queue
+        // delete message from the queue
+        await client.send(
+          new DeleteMessageCommand({
+            QueueUrl: queueURL,
+            ReceiptHandle: message.ReceiptHandle,
+          }),
+        );
       }
     } catch (error) {
       console.log(error);

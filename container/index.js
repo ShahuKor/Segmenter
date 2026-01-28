@@ -2,6 +2,7 @@ import {
   S3Client,
   GetObjectCommand,
   PutObjectCommand,
+  decodeURIComponent,
 } from "@aws-sdk/client-s3";
 import fs from "node:fs/promises";
 import ffmpeg from "fluent-ffmpeg";
@@ -29,13 +30,15 @@ const KEY = process.env.KEY;
 
 async function init() {
   try {
+    const decodedKey = decodeURIComponent(KEY);
+
     const getCommand = new GetObjectCommand({
       Bucket: BUCKET_NAME,
-      Key: KEY,
+      Key: decodedKey,
     });
 
     const result = await client.send(getCommand);
-    const originalFilePath = "videos/original-file.mp4";
+    const originalFilePath = "original-file.mp4";
     await fs.mkdir("videos", { recursive: true });
     const body = await streamToBuffer(result.Body);
     await fs.writeFile(originalFilePath, body);
@@ -45,7 +48,7 @@ async function init() {
     // Start transcoding for each resolution
     await Promise.all(
       RESOLUTIONS.map((res) => {
-        const output = `transcoded/video-${res.name}.mp4`;
+        const output = `video-${res.name}.mp4`;
         return new Promise((resolve, reject) => {
           ffmpeg(originalVideoPath)
             .output(output)
@@ -55,7 +58,7 @@ async function init() {
             .on("end", async () => {
               // Upload the transcoded video back to S3
               const putCommand = new PutObjectCommand({
-                Bucket: BUCKET_NAME,
+                Bucket: "production.shahukor.xyz",
                 Key: output,
                 Body: await fs.readFile(output),
               });
