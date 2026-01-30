@@ -107,4 +107,8 @@ output/video-1080p.mp4
 - Successfully tested with a 4K (~90MB) video
 - All output resolutions were generated correctly
 
+![output-image](https://github.com/user-attachments/assets/2ea33922-b710-4c89-a332-19ccdda67a24)
+
+![ecs-tasks](https://github.com/user-attachments/assets/14c0632b-dcdf-4c12-b69f-30725738e1ee)
+
 ---
