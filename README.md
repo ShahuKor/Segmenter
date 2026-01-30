@@ -10,6 +10,8 @@ The system is fully **decoupled, scalable, and serverless**
 
 ## Architecture Overview
 
+![Architecture-diagram](https://github.com/user-attachments/assets/20a4963c-5b27-46e1-a9ed-fccc0b8cfdc0)
+
 ---
 
 ## AWS Services Used
